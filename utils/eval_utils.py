@@ -6,8 +6,6 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix
 import seaborn as sns
 import torch
-import os
-import config
 from scipy import stats
 
 def classify_predictions(preds, threshold=0.5):

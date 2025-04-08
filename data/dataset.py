@@ -24,13 +24,11 @@ class BrainMRIDataset(Dataset):
     def __getitem__(self, idx):
         # Load 3D MRI volume
         img_path = self.image_paths[idx]
-        # Nibabel is commonly used for medical image formats like NIfTI
+        # Nibabel is used for medical image formats
         img = nib.load(img_path).get_fdata()
         
         # Resize to fixed dimensions if needed
         if img.shape != config.IMAGE_SIZE:
-            # Here you would implement resizing (e.g., using scipy.ndimage)
-            # For this implementation, let's assume we need to handle varying sizes
             from scipy.ndimage import zoom
             
             # Calculate zoom factors for each dimension
@@ -40,7 +38,7 @@ class BrainMRIDataset(Dataset):
         # Convert to tensor
         img_tensor = torch.from_numpy(img).float().unsqueeze(0)  # Add channel dimension
         
-        # Apply transformations if specified
+        # Apply transformations
         if self.transform:
             img_tensor = self.transform(img_tensor)
         
@@ -63,7 +61,7 @@ def load_dataset(task, data_dir=None):
     if data_dir is None:
         data_dir = os.path.join(config.DATA_DIR, "raw")
     
-    # Path to the files (directly in the 'files' directory, not in 'extracted')
+    # Path to the files
     image_dir = os.path.join(data_dir, "files")
     
     # Path to the labels file

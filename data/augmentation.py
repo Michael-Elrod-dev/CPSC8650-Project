@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn.functional as F
-import numpy as np
+import kornia
 import random
 
 class Compose:
@@ -15,33 +15,29 @@ class Compose:
             x = transform(x)
         return x
 
-class RandomRotate:
-    """Randomly rotate the 3D volume"""
+class RandomRotate3D:
+    """Randomly rotate the 3D volume using kornia"""
     def __init__(self, max_angle=10):
         self.max_angle = max_angle
         
     def __call__(self, x):
-        # For simplicity, we'll only implement rotation around z-axis
-        # In a real implementation, you might want to rotate around all axes
-        angle = random.uniform(-self.max_angle, self.max_angle) * (np.pi / 180)
+        # Generate random angles
+        angles = torch.rand(3) * 2 * self.max_angle - self.max_angle
         
-        # Create rotation matrix
-        cos_val = np.cos(angle)
-        sin_val = np.sin(angle)
-        rot_matrix = torch.tensor([
-            [cos_val, -sin_val, 0],
-            [sin_val, cos_val, 0],
-            [0, 0, 1]
-        ], dtype=torch.float)
+        # Add batch dimension
+        x_batch = x.unsqueeze(0)
         
         # Apply rotation
-        # In a real implementation, you would use proper 3D rotation
-        # Here we're just illustrating the concept
-        # For a proper implementation, consider using libraries like kornia
+        rotated = kornia.geometry.transform.rotate3d(
+            x_batch,
+            angles[0], angles[1], angles[2],
+            center=None,
+            mode='bilinear',
+            padding_mode='zeros'
+        )
         
-        # For simplicity, we'll just return the original tensor
-        # as proper 3D rotation is complex to implement from scratch
-        return x
+        # Remove batch dimension
+        return rotated.squeeze(0)
 
 class RandomFlip:
     """Randomly flip the 3D volume along specified axes"""

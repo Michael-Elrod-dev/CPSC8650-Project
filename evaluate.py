@@ -3,7 +3,6 @@
 import os
 import torch
 import torch.nn as nn
-import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 
@@ -13,7 +12,7 @@ from models.resnet3d import resnet3d_18, resnet3d_34
 from utils.eval_utils import (
     evaluate_model, calculate_metrics, plot_roc_curve, 
     plot_precision_recall_curve, plot_confusion_matrix,
-    compare_models, paired_t_test
+    compare_models
 )
 
 def main(args):

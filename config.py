@@ -23,7 +23,7 @@ TRAIN_VAL_TEST_SPLIT = (0.7, 0.1, 0.2)
 
 # Model configurations
 NUM_CLASSES = 1  # Binary classification
-BATCH_SIZE = 4   # Reduced from 10 to handle larger images if needed
+BATCH_SIZE = 4
 LEARNING_RATE = 1e-3  # As specified in the paper
 NUM_EPOCHS = 50
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
