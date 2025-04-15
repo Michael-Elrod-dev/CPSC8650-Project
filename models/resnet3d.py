@@ -25,7 +25,8 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm3d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        # Replace ReLU with Tanh
+        self.tanh = nn.Tanh()
         self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm3d(out_channels)
         self.downsample = downsample
@@ -35,7 +36,7 @@ class ResidualBlock(nn.Module):
         
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = self.tanh(out)
         
         out = self.conv2(out)
         out = self.bn2(out)
@@ -44,7 +45,8 @@ class ResidualBlock(nn.Module):
             identity = self.downsample(x)
         
         out += identity
-        out = self.relu(out)
+        # Also use tanh here
+        out = self.tanh(out)
         
         return out
 
@@ -52,14 +54,15 @@ class ResNet3D(nn.Module):
     """
     3D ResNet architecture
     """
-    def __init__(self, block, layers, num_classes=1):
+    def __init__(self, block, layers, num_classes=1, dropout_rate=0.3):
         super(ResNet3D, self).__init__()
         self.in_channels = 64
+        self.dropout_rate = dropout_rate
         
         # Initial convolution
         self.conv1 = nn.Conv3d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm3d(64)
-        self.relu = nn.ReLU(inplace=True)
+        self.tanh = nn.Tanh()
         self.maxpool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
         
         # Residual layers
@@ -70,12 +73,13 @@ class ResNet3D(nn.Module):
         
         # Global average pooling and final fully connected layer
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(512, num_classes)
         
-        # Initialize weights
+        # Initialize weights - update for tanh
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='tanh')
             elif isinstance(m, nn.BatchNorm3d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -100,7 +104,7 @@ class ResNet3D(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.relu(x)
+        x = self.tanh(x)
         x = self.maxpool(x)
         
         x = self.layer1(x)
@@ -110,6 +114,7 @@ class ResNet3D(nn.Module):
         
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
+        x = self.dropout(x)
         x = self.fc(x)
         
         return x

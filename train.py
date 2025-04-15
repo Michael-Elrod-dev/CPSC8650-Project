@@ -50,19 +50,33 @@ def main(args):
     output_dir = os.path.join(config.OUTPUT_DIR, f"{args.task}_{timestamp}")
     os.makedirs(output_dir, exist_ok=True)
     
+    # Calculate class weights for balanced loss function
+    if args.task == "facial_features":
+        # Get training data labels
+        _, train_labels = load_dataset(args.task)
+        # Count positive and negative samples
+        pos_count = sum(train_labels)
+        neg_count = len(train_labels) - pos_count
+        # Calculate weights inversely proportional to class frequencies
+        pos_weight = neg_count / pos_count if pos_count > 0 else 1.0
+        class_weight = torch.tensor([pos_weight], device=device)
+        print(f"Using class weight: {pos_weight:.4f} for positive class")
+    else:
+        class_weight = None
+    
     # Create model
     if args.model == 'resnet18':
-        model_fn = lambda: resnet3d_18(num_classes=1)
+        model_fn = lambda: resnet3d_18(num_classes=1, dropout_rate=0.3)
     elif args.model == 'resnet34':
-        model_fn = lambda: resnet3d_34(num_classes=1)
+        model_fn = lambda: resnet3d_34(num_classes=1, dropout_rate=0.3)
     else:
         raise ValueError(f"Unknown model: {args.model}")
     
-    # Define loss function
-    criterion = nn.BCEWithLogitsLoss()
+    # Define loss function with class weighting
+    criterion = nn.BCEWithLogitsLoss(pos_weight=class_weight)
     
-    # Define optimizer function
-    optimizer_fn = lambda params: optim.Adam(params, lr=config.LEARNING_RATE)
+    # Define optimizer function with weight decay for L2 regularization
+    optimizer_fn = lambda params: optim.Adam(params, lr=config.LEARNING_RATE, weight_decay=0.001)
     
     # Define scheduler function
     scheduler_fn = lambda optimizer: ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
