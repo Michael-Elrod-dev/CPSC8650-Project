@@ -31,7 +31,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Training configurations
 RANDOM_SEED = 42
 NUM_FOLDS = 10  # 10-fold cross-validation as in the paper
-EARLY_STOPPING_PATIENCE = 10
+EARLY_STOPPING_PATIENCE = 15
 
 # Task configurations
 TASKS = ["facial_features", "brain_tissue_loss"]

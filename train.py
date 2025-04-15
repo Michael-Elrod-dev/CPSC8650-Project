@@ -12,7 +12,7 @@ import random
 from datetime import datetime
 
 import config
-from data.dataset import create_data_loaders, create_kfold_loaders
+from data.dataset import load_dataset, create_data_loaders, create_kfold_loaders
 from data.augmentation import get_transform
 from models.resnet3d import resnet3d_18, resnet3d_34
 from utils.train_utils import train_model, k_fold_cross_validation, plot_training_history

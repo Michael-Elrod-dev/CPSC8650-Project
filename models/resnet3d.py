@@ -119,14 +119,14 @@ class ResNet3D(nn.Module):
         
         return x
 
-def resnet3d_18(num_classes=1):
+def resnet3d_18(num_classes=1, dropout_rate=0.3):
     """
     Construct a 3D ResNet-18 model
     """
-    return ResNet3D(ResidualBlock, [2, 2, 2, 2], num_classes)
+    return ResNet3D(ResidualBlock, [2, 2, 2, 2], num_classes, dropout_rate)
 
-def resnet3d_34(num_classes=1):
+def resnet3d_34(num_classes=1, dropout_rate=0.3):
     """
     Construct a 3D ResNet-34 model
     """
-    return ResNet3D(ResidualBlock, [3, 4, 6, 3], num_classes)
+    return ResNet3D(ResidualBlock, [3, 4, 6, 3], num_classes, dropout_rate)

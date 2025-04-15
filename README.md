@@ -51,32 +51,63 @@ brain_mri_analysis/
 
 ### Training
 
-1. Train a model for facial feature detection:
+You can run the following commands to train models for both tasks with both architectures:
+
+1. Train ResNet-18 for facial feature detection:
    ```bash
    python train.py --task facial_features --model resnet18 --batch_size 10 --epochs 50
    ```
 
-2. Train a model for brain tissue loss detection:
+2. Train ResNet-34 for facial feature detection:
+   ```bash
+   python train.py --task facial_features --model resnet34 --batch_size 10 --epochs 50
+   ```
+
+3. Train ResNet-18 for brain tissue loss detection:
    ```bash
    python train.py --task brain_tissue_loss --model resnet18 --batch_size 10 --epochs 50
    ```
 
-3. Use cross-validation for more robust evaluation:
+4. Train ResNet-34 for brain tissue loss detection:
+   ```bash
+   python train.py --task brain_tissue_loss --model resnet34 --batch_size 10 --epochs 50
+   ```
+
+5. Use cross-validation for more robust evaluation (optional):
    ```bash
    python train.py --task facial_features --model resnet18 --cross_val
    ```
 
 ### Evaluation
 
-1. Evaluate a trained model:
+After training, evaluate each model using these commands:
+
+1. Evaluate ResNet-18 for facial feature detection:
    ```bash
    python evaluate.py --task facial_features --model resnet18 --model_path output/facial_features_TIMESTAMP/best_model.pth
    ```
 
-2. Compare with reference model metrics:
+2. Evaluate ResNet-34 for facial feature detection:
+   ```bash
+   python evaluate.py --task facial_features --model resnet34 --model_path output/facial_features_TIMESTAMP/best_model.pth
+   ```
+
+3. Evaluate ResNet-18 for brain tissue loss detection:
+   ```bash
+   python evaluate.py --task brain_tissue_loss --model resnet18 --model_path output/brain_tissue_loss_TIMESTAMP/best_model.pth
+   ```
+
+4. Evaluate ResNet-34 for brain tissue loss detection:
+   ```bash
+   python evaluate.py --task brain_tissue_loss --model resnet34 --model_path output/brain_tissue_loss_TIMESTAMP/best_model.pth
+   ```
+
+5. Compare with reference model metrics:
    ```bash
    python evaluate.py --task facial_features --model resnet18 --model_path output/facial_features_TIMESTAMP/best_model.pth --reference_file reference_metrics.txt
    ```
+
+Note: Replace TIMESTAMP with the actual timestamp created during the training process (format: YYYYMMDD_HHMMSS).
 
 ## Reference Values from Original Paper
 
