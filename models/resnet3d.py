@@ -17,6 +17,26 @@ class Conv3DBlock(nn.Module):
     def forward(self, x):
         return self.relu(self.bn(self.conv(x)))
 
+
+class SEBlock3D(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(SEBlock3D, self).__init__()
+        self.pool = nn.AdaptiveAvgPool3d(1)
+        self.fc1 = nn.Linear(channels, channels // reduction, bias=False)
+        self.relu = nn.ReLU(inplace=True)
+        self.fc2 = nn.Linear(channels // reduction, channels, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        b, c, _, _, _ = x.size()
+        y = self.pool(x).view(b, c)
+        y = self.fc1(y)
+        y = self.relu(y)
+        y = self.fc2(y)
+        y = self.sigmoid(y).view(b, c, 1, 1, 1)
+        return x * y
+
+
 class ResidualBlock(nn.Module):
     """
     Residual block for 3D ResNet
@@ -25,10 +45,10 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm3d(out_channels)
-        # Replace ReLU with Tanh
-        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm3d(out_channels)
+        self.se = SEBlock3D(out_channels)
         self.downsample = downsample
         
     def forward(self, x):
@@ -36,38 +56,44 @@ class ResidualBlock(nn.Module):
         
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.tanh(out)
-        
+        out = self.relu(out)
+
         out = self.conv2(out)
         out = self.bn2(out)
-        
+        out = self.se(out)
+
         if self.downsample is not None:
             identity = self.downsample(x)
         
         out += identity
-        # Also use tanh here
-        out = self.tanh(out)
-        
+        out = self.relu(out)
+
         return out
+
 
 class ResNet3D(nn.Module):
     """
     3D ResNet architecture
     """
-    def __init__(self, block, layers, num_classes=1, dropout_rate=0.3):
+    def __init__(self, block, layers, num_classes=1, dropout_rate=0.5, early_exit_threshold=0.9, disable_early_exit=False):
         super(ResNet3D, self).__init__()
         self.in_channels = 64
         self.dropout_rate = dropout_rate
-        
+        self.early_exit_threshold = early_exit_threshold
+        self.disable_early_exit = disable_early_exit
+
         # Initial convolution
         self.conv1 = nn.Conv3d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm3d(64)
-        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
         
         # Residual layers
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+
+        self.early_exit_fc = nn.Linear(128, num_classes)
+
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         
@@ -76,10 +102,10 @@ class ResNet3D(nn.Module):
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(512, num_classes)
         
-        # Initialize weights - update for tanh
+        # Initialize weights
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='tanh')
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, nn.BatchNorm3d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -104,11 +130,21 @@ class ResNet3D(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.tanh(x)
+        x = self.relu(x)
         x = self.maxpool(x)
         
         x = self.layer1(x)
         x = self.layer2(x)
+
+        early_out = self.avgpool(x)
+        early_out = torch.flatten(early_out, 1)
+        early_logits = self.early_exit_fc(early_out)
+        early_probs = torch.sigmoid(early_logits)
+
+        if not self.training and not self.disable_early_exit:
+            if (early_probs > self.early_exit_threshold).all():
+                return early_logits
+
         x = self.layer3(x)
         x = self.layer4(x)
         
@@ -119,14 +155,16 @@ class ResNet3D(nn.Module):
         
         return x
 
-def resnet3d_18(num_classes=1, dropout_rate=0.3):
+
+def resnet3d_18(num_classes=1, dropout_rate=0.5, early_exit_threshold=0.9, disable_early_exit=False):
     """
     Construct a 3D ResNet-18 model
     """
-    return ResNet3D(ResidualBlock, [2, 2, 2, 2], num_classes, dropout_rate)
+    return ResNet3D(ResidualBlock, [2, 2, 2, 2], num_classes, dropout_rate, early_exit_threshold, disable_early_exit)
 
-def resnet3d_34(num_classes=1, dropout_rate=0.3):
+
+def resnet3d_34(num_classes=1, dropout_rate=0.5, early_exit_threshold=0.9, disable_early_exit=False):
     """
     Construct a 3D ResNet-34 model
     """
-    return ResNet3D(ResidualBlock, [3, 4, 6, 3], num_classes, dropout_rate)
+    return ResNet3D(ResidualBlock, [3, 4, 6, 3], num_classes, dropout_rate, early_exit_threshold, disable_early_exit)

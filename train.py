@@ -16,7 +16,7 @@ from data.dataset import load_dataset, create_data_loaders, create_kfold_loaders
 from data.augmentation import get_transform
 from models.resnet3d import resnet3d_18, resnet3d_34
 from utils.train_utils import train_model, k_fold_cross_validation, plot_training_history
-from utils.eval_utils import evaluate_model, calculate_metrics
+from utils.eval_utils import evaluate_model, calculate_metrics, save_eval_plots
 
 def set_seed(seed):
     """
@@ -57,18 +57,18 @@ def main(args):
         # Count positive and negative samples
         pos_count = sum(train_labels)
         neg_count = len(train_labels) - pos_count
-        # Calculate weights inversely proportional to class frequencies
-        pos_weight = neg_count / pos_count if pos_count > 0 else 1.0
+        # Calculate weights inversely proportional to class frequencies (Capped)
+        pos_weight = min(neg_count / pos_count, 5.0) if pos_count > 0 else 1.0
         class_weight = torch.tensor([pos_weight], device=device)
-        print(f"Using class weight: {pos_weight:.4f} for positive class")
+        print(f"Using capped class weight: {pos_weight:.4f} for positive class")
     else:
         class_weight = None
     
     # Create model
     if args.model == 'resnet18':
-        model_fn = lambda: resnet3d_18(num_classes=1, dropout_rate=0.3)
+        model_fn = lambda: resnet3d_18(num_classes=1, dropout_rate=0.5)
     elif args.model == 'resnet34':
-        model_fn = lambda: resnet3d_34(num_classes=1, dropout_rate=0.3)
+        model_fn = lambda: resnet3d_34(num_classes=1, dropout_rate=0.5)
     else:
         raise ValueError(f"Unknown model: {args.model}")
     
@@ -154,6 +154,8 @@ def main(args):
         metrics = calculate_metrics(test_targets, test_preds)
         
         # Save test results
+        save_eval_plots(metrics, output_dir)
+
         with open(os.path.join(output_dir, "test_results.txt"), "w") as f:
             f.write(f"Task: {args.task}\n")
             f.write(f"Model: {args.model}\n")

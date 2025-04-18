@@ -7,6 +7,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_ma
 import seaborn as sns
 import torch
 from scipy import stats
+import os
 
 def classify_predictions(preds, threshold=0.5):
     """
@@ -38,6 +39,7 @@ def calculate_metrics(y_true, y_pred_proba, threshold=0.5):
     
     # Calculate metrics
     metrics = {}
+    metrics['threshold'] = threshold
     metrics['accuracy'] = accuracy_score(y_true, y_pred)
     metrics['sensitivity'] = recall_score(y_true, y_pred, zero_division=0)
     metrics['specificity'] = recall_score(1-y_true, 1-y_pred, zero_division=0)
@@ -51,14 +53,14 @@ def calculate_metrics(y_true, y_pred_proba, threshold=0.5):
     metrics['tpr'] = tpr
     
     # Calculate precision-recall curve and AUC
-    precision, recall, _ = precision_recall_curve(y_true, y_pred_proba)
+    precision, recall, thresholds = precision_recall_curve(y_true, y_pred_proba)
     metrics['pr_auc'] = auc(recall, precision)
     metrics['precision_curve'] = precision
     metrics['recall_curve'] = recall
     
     # Calculate confusion matrix
     metrics['confusion_matrix'] = confusion_matrix(y_true, y_pred)
-    
+
     return metrics
 
 def evaluate_model(model, dataloader, criterion, device):
@@ -78,7 +80,8 @@ def evaluate_model(model, dataloader, criterion, device):
     running_loss = 0.0
     all_preds = []
     all_targets = []
-    
+    early_exit_count = 0
+
     with torch.no_grad():
         for inputs, targets in dataloader:
             # Move data to device
@@ -87,6 +90,10 @@ def evaluate_model(model, dataloader, criterion, device):
             
             # Forward pass
             outputs = model(inputs)
+            if hasattr(model, 'early_exit_fc') and not model.training:
+                if outputs.shape != targets.unsqueeze(1).shape:
+                    early_exit_count += inputs.size(0)
+
             loss = criterion(outputs, targets.unsqueeze(1))
             
             # Update statistics
@@ -165,6 +172,12 @@ def plot_confusion_matrix(metrics, save_path=None):
         print(f"Confusion matrix plot saved to {save_path}")
     
     plt.show()
+
+def save_eval_plots(metrics, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    plot_roc_curve(metrics, save_path=os.path.join(output_dir, "roc_curve.png"))
+    plot_precision_recall_curve(metrics, save_path=os.path.join(output_dir, "pr_curve.png"))
+    plot_confusion_matrix(metrics, save_path=os.path.join(output_dir, "confusion_matrix.png"))
 
 def compare_models(reference_metrics, our_metrics, task):
     """

@@ -1,0 +1,10 @@
+Task: facial_features
+Model: resnet18
+Test loss: 0.3309
+Accuracy: 0.8609
+Sensitivity: 0.5714
+Specificity: 0.9945
+Precision: 0.9796
+F1 score: 0.7218
+ROC AUC: 0.9763
+PR AUC: 0.9537
