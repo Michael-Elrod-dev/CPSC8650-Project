@@ -1,0 +1,10 @@
+Task: brain_tissue_loss
+Model: resnet18
+Test loss: 0.1905
+Accuracy: 0.9474
+Sensitivity: 0.9775
+Specificity: 0.9170
+Precision: 0.9223
+F1 score: 0.9491
+ROC AUC: 0.9845
+PR AUC: 0.9842
